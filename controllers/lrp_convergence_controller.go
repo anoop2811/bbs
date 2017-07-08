@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"sync"
 
 	"code.cloudfoundry.org/auctioneer"
@@ -14,7 +15,7 @@ import (
 
 //go:generate counterfeiter -o fakes/fake_retirer.go . Retirer
 type Retirer interface {
-	RetireActualLRP(logger lager.Logger, key *models.ActualLRPKey) error
+	RetireActualLRP(logger lager.Logger, ctx context.Context, key *models.ActualLRPKey) error
 }
 
 type LRPConvergenceController struct {
@@ -47,7 +48,7 @@ func NewLRPConvergenceController(
 	}
 }
 
-func (h *LRPConvergenceController) ConvergeLRPs(logger lager.Logger) error {
+func (h *LRPConvergenceController) ConvergeLRPs(logger lager.Logger, ctx context.Context) error {
 	logger = h.logger.Session("converge-lrps")
 	var err error
 
@@ -71,7 +72,7 @@ func (h *LRPConvergenceController) ConvergeLRPs(logger lager.Logger) error {
 	for _, key := range keysToRetire {
 		key := key
 		works = append(works, func() {
-			err := h.retirer.RetireActualLRP(retireLogger, key)
+			err := h.retirer.RetireActualLRP(retireLogger, ctx, key)
 			if err != nil {
 				logger.Error("retiring-lrp-failed", err)
 			}
@@ -126,7 +127,7 @@ func (h *LRPConvergenceController) ConvergeLRPs(logger lager.Logger) error {
 	startLogger := logger.WithData(lager.Data{"start_requests_count": len(startRequests)})
 	if len(startRequests) > 0 {
 		startLogger.Debug("requesting-start-auctions")
-		err = h.auctioneerClient.RequestLRPAuctions(logger, startRequests)
+		err = h.auctioneerClient.RequestLRPAuctions(logger, ctx, startRequests)
 		if err != nil {
 			startLogger.Error("failed-to-request-starts", err, lager.Data{"lrp_start_auctions": startRequests})
 		}

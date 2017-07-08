@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"context"
+
 	"code.cloudfoundry.org/auctioneer"
 	"code.cloudfoundry.org/bbs/db"
 	"code.cloudfoundry.org/bbs/events"
@@ -40,7 +42,7 @@ func NewActualLRPLifecycleController(
 	}
 }
 
-func (h *ActualLRPLifecycleController) ClaimActualLRP(logger lager.Logger, processGuid string, index int32, actualLRPInstanceKey *models.ActualLRPInstanceKey) error {
+func (h *ActualLRPLifecycleController) ClaimActualLRP(logger lager.Logger, ctx context.Context, processGuid string, index int32, actualLRPInstanceKey *models.ActualLRPInstanceKey) error {
 	before, after, err := h.db.ClaimActualLRP(logger, processGuid, index, actualLRPInstanceKey)
 	if err != nil {
 		return err
@@ -51,7 +53,7 @@ func (h *ActualLRPLifecycleController) ClaimActualLRP(logger lager.Logger, proce
 	}
 	return nil
 }
-func (h *ActualLRPLifecycleController) StartActualLRP(logger lager.Logger, actualLRPKey *models.ActualLRPKey, actualLRPInstanceKey *models.ActualLRPInstanceKey, actualLRPNetInfo *models.ActualLRPNetInfo) error {
+func (h *ActualLRPLifecycleController) StartActualLRP(logger lager.Logger, ctx context.Context, actualLRPKey *models.ActualLRPKey, actualLRPInstanceKey *models.ActualLRPInstanceKey, actualLRPNetInfo *models.ActualLRPNetInfo) error {
 	before, after, err := h.db.StartActualLRP(logger, actualLRPKey, actualLRPInstanceKey, actualLRPNetInfo)
 	if err != nil {
 		return err
@@ -79,7 +81,7 @@ func (h *ActualLRPLifecycleController) StartActualLRP(logger lager.Logger, actua
 	return nil
 }
 
-func (h *ActualLRPLifecycleController) CrashActualLRP(logger lager.Logger, actualLRPKey *models.ActualLRPKey, actualLRPInstanceKey *models.ActualLRPInstanceKey, errorMessage string) error {
+func (h *ActualLRPLifecycleController) CrashActualLRP(logger lager.Logger, ctx context.Context, actualLRPKey *models.ActualLRPKey, actualLRPInstanceKey *models.ActualLRPInstanceKey, errorMessage string) error {
 	before, after, shouldRestart, err := h.db.CrashActualLRP(logger, actualLRPKey, actualLRPInstanceKey, errorMessage)
 	if err != nil {
 		return err
@@ -95,7 +97,7 @@ func (h *ActualLRPLifecycleController) CrashActualLRP(logger lager.Logger, actua
 		schedInfo := desiredLRP.DesiredLRPSchedulingInfo()
 		startRequest := auctioneer.NewLRPStartRequestFromSchedulingInfo(&schedInfo, int(actualLRPKey.Index))
 		logger.Info("start-lrp-auction-request", lager.Data{"app_guid": schedInfo.ProcessGuid, "index": int(actualLRPKey.Index)})
-		err = h.auctioneerClient.RequestLRPAuctions(logger, []*auctioneer.LRPStartRequest{&startRequest})
+		err = h.auctioneerClient.RequestLRPAuctions(logger, ctx, []*auctioneer.LRPStartRequest{&startRequest})
 		logger.Info("finished-lrp-auction-request", lager.Data{"app_guid": schedInfo.ProcessGuid, "index": int(actualLRPKey.Index)})
 		if err != nil {
 			logger.Error("failed-requesting-auction", err)
@@ -110,7 +112,7 @@ func (h *ActualLRPLifecycleController) CrashActualLRP(logger lager.Logger, actua
 	return nil
 }
 
-func (h *ActualLRPLifecycleController) FailActualLRP(logger lager.Logger, key *models.ActualLRPKey, errorMessage string) error {
+func (h *ActualLRPLifecycleController) FailActualLRP(logger lager.Logger, ctx context.Context, key *models.ActualLRPKey, errorMessage string) error {
 	before, after, err := h.db.FailActualLRP(logger, key, errorMessage)
 	if err != nil {
 		return err
@@ -120,7 +122,7 @@ func (h *ActualLRPLifecycleController) FailActualLRP(logger lager.Logger, key *m
 	return nil
 }
 
-func (h *ActualLRPLifecycleController) RemoveActualLRP(logger lager.Logger, processGuid string, index int32, instanceKey *models.ActualLRPInstanceKey) error {
+func (h *ActualLRPLifecycleController) RemoveActualLRP(logger lager.Logger, ctx context.Context, processGuid string, index int32, instanceKey *models.ActualLRPInstanceKey) error {
 	beforeActualLRPGroup, err := h.db.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, index)
 	if err != nil {
 		return err
@@ -135,7 +137,7 @@ func (h *ActualLRPLifecycleController) RemoveActualLRP(logger lager.Logger, proc
 	return nil
 }
 
-func (h *ActualLRPLifecycleController) RetireActualLRP(logger lager.Logger, key *models.ActualLRPKey) error {
+func (h *ActualLRPLifecycleController) RetireActualLRP(logger lager.Logger, ctx context.Context, key *models.ActualLRPKey) error {
 	var err error
 	var cell *models.CellPresence
 

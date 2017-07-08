@@ -33,6 +33,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/serviceclient"
 	"code.cloudfoundry.org/bbs/taskworkpool"
+	"code.cloudfoundry.org/bbs/tracer"
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
@@ -51,6 +52,7 @@ import (
 	"github.com/hashicorp/consul/api"
 	"github.com/lib/pq"
 	uuid "github.com/nu7hatch/gouuid"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
@@ -83,7 +85,6 @@ func main() {
 	logger.Info("starting")
 
 	initializeDropsonde(logger, &bbsConfig)
-
 	clock := clock.NewClock()
 
 	consulClient, err := consuladapter.NewClientFromUrl(bbsConfig.ConsulCluster)
@@ -215,7 +216,9 @@ func main() {
 		logger.Fatal("new-rep-client-factory-failed", err)
 	}
 
-	auctioneerClient := initializeAuctioneerClient(logger, &bbsConfig)
+	bbsTracer := tracer.NewTracer(logger)
+
+	auctioneerClient := initializeAuctioneerClient(logger, bbsTracer, &bbsConfig)
 
 	exitChan := make(chan struct{})
 
@@ -307,6 +310,7 @@ func main() {
 		repClientFactory,
 		migrationsDone,
 		exitChan,
+		bbsTracer,
 	)
 
 	bbsElectionMetronNotifier := metrics.NewBBSElectionMetronNotifier(logger)
@@ -321,7 +325,6 @@ func main() {
 		bbsConfig.ConvergenceWorkers,
 	)
 	taskController := controllers.NewTaskController(activeDB, cbWorkPool, auctioneerClient, serviceClient, repClientFactory, taskHub)
-
 	convergerProcess := converger.New(
 		logger,
 		clock,
@@ -509,7 +512,7 @@ func initializeLockMaintainer(
 	)
 }
 
-func initializeAuctioneerClient(logger lager.Logger, bbsConfig *config.BBSConfig) auctioneer.Client {
+func initializeAuctioneerClient(logger lager.Logger, bbsTracer opentracing.Tracer, bbsConfig *config.BBSConfig) auctioneer.Client {
 	if bbsConfig.AuctioneerAddress == "" {
 		logger.Fatal("auctioneer-address-validation-failed", errors.New("auctioneerAddress is required"))
 	}
@@ -520,6 +523,7 @@ func initializeAuctioneerClient(logger lager.Logger, bbsConfig *config.BBSConfig
 			bbsConfig.AuctioneerClientCert,
 			bbsConfig.AuctioneerClientKey,
 			bbsConfig.AuctioneerRequireTLS,
+			bbsTracer,
 		)
 		if err != nil {
 			logger.Fatal("failed-to-construct-auctioneer-client", err)
@@ -527,7 +531,7 @@ func initializeAuctioneerClient(logger lager.Logger, bbsConfig *config.BBSConfig
 		return client
 	}
 
-	return auctioneer.NewClient(bbsConfig.AuctioneerAddress)
+	return auctioneer.NewClient(bbsConfig.AuctioneerAddress, bbsTracer)
 }
 
 func initializeDropsonde(logger lager.Logger, bbsConfig *config.BBSConfig) {

@@ -138,7 +138,7 @@ func (h *DesiredLRPHandler) DesireDesiredLRP_r1(logger lager.Logger, w http.Resp
 	go h.desiredHub.Emit(models.NewDesiredLRPCreatedEvent(desiredLRP))
 
 	schedulingInfo := request.DesiredLrp.DesiredLRPSchedulingInfo()
-	h.startInstanceRange(logger, 0, schedulingInfo.Instances, &schedulingInfo)
+	h.startInstanceRange(logger, req.Context(), 0, schedulingInfo.Instances, &schedulingInfo)
 }
 
 func parseRequestForDesireDesiredLRP_r1(logger lager.Logger, req *http.Request, request *models.DesireLRPRequest) error {
@@ -195,7 +195,7 @@ func (h *DesiredLRPHandler) DesireDesiredLRP_r0(logger lager.Logger, w http.Resp
 	go h.desiredHub.Emit(models.NewDesiredLRPCreatedEvent(desiredLRP))
 
 	schedulingInfo := request.DesiredLrp.DesiredLRPSchedulingInfo()
-	h.startInstanceRange(logger, 0, schedulingInfo.Instances, &schedulingInfo)
+	h.startInstanceRange(logger, req.Context(), 0, schedulingInfo.Instances, &schedulingInfo)
 }
 
 func parseRequestForDesireDesiredLRP_r0(logger lager.Logger, req *http.Request, request *models.DesireLRPRequest) error {

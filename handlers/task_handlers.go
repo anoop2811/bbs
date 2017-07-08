@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -13,14 +14,14 @@ import (
 type TaskController interface {
 	Tasks(logger lager.Logger, domain, cellId string) ([]*models.Task, error)
 	TaskByGuid(logger lager.Logger, taskGuid string) (*models.Task, error)
-	DesireTask(logger lager.Logger, taskDefinition *models.TaskDefinition, taskGuid, domain string) error
-	StartTask(logger lager.Logger, taskGuid, cellId string) (shouldStart bool, err error)
+	DesireTask(logger lager.Logger, ctx context.Context, taskDefinition *models.TaskDefinition, taskGuid, domain string) error
+	StartTask(logger lager.Logger, ctx context.Context, taskGuid, cellId string) (shouldStart bool, err error)
 	CancelTask(logger lager.Logger, taskGuid string) error
 	FailTask(logger lager.Logger, taskGuid, failureReason string) error
 	CompleteTask(logger lager.Logger, taskGuid, cellId string, failed bool, failureReason, result string) error
 	ResolvingTask(logger lager.Logger, taskGuid string) error
 	DeleteTask(logger lager.Logger, taskGuid string) error
-	ConvergeTasks(logger lager.Logger, kickTaskDuration, expirePendingTaskDuration, expireCompletedTaskDuration time.Duration) error
+	ConvergeTasks(logger lager.Logger, ctx context.Context, kickTaskDuration, expirePendingTaskDuration, expireCompletedTaskDuration time.Duration) error
 }
 
 type TaskHandler struct {
@@ -97,7 +98,7 @@ func (h *TaskHandler) DesireTask(logger lager.Logger, w http.ResponseWriter, req
 		return
 	}
 
-	err = h.controller.DesireTask(logger, request.TaskDefinition, request.TaskGuid, request.Domain)
+	err = h.controller.DesireTask(logger, req.Context(), request.TaskDefinition, request.TaskGuid, request.Domain)
 	response.Error = models.ConvertError(err)
 }
 
@@ -118,7 +119,7 @@ func (h *TaskHandler) StartTask(logger lager.Logger, w http.ResponseWriter, req 
 		return
 	}
 
-	response.ShouldStart, err = h.controller.StartTask(logger, request.TaskGuid, request.CellId)
+	response.ShouldStart, err = h.controller.StartTask(logger, req.Context(), request.TaskGuid, request.CellId)
 	response.Error = models.ConvertError(err)
 }
 

@@ -108,7 +108,7 @@ func (h *TaskHandler) DesireTask_r1(logger lager.Logger, w http.ResponseWriter, 
 		request.TaskDefinition.VolumeMounts[i] = mount.VersionUpToV1()
 	}
 
-	err = h.controller.DesireTask(logger, request.TaskDefinition, request.TaskGuid, request.Domain)
+	err = h.controller.DesireTask(logger, req.Context(), request.TaskDefinition, request.TaskGuid, request.Domain)
 	response.Error = models.ConvertError(err)
 }
 
@@ -129,7 +129,7 @@ func (h *TaskHandler) DesireTask_r0(logger lager.Logger, w http.ResponseWriter, 
 		return
 	}
 
-	err = h.controller.DesireTask(logger, request.TaskDefinition, request.TaskGuid, request.Domain)
+	err = h.controller.DesireTask(logger, req.Context(), request.TaskDefinition, request.TaskGuid, request.Domain)
 	if err != nil {
 		response.Error = models.ConvertError(err)
 		return
